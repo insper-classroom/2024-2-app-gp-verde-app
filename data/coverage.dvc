@@ -1,0 +1,6 @@
+outs:
+- md5: c2faafd78d598729d01633957ab69aae.dir
+  size: 1156188255
+  nfiles: 554
+  hash: md5
+  path: coverage
