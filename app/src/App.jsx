@@ -1,35 +1,46 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [input, setInput] = useState('');
+  const [prediction, setPrediction] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handlePredict = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://127.0.0.1:8000/predict/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ feature: parseFloat(input) }),
+      });
+      const data = await response.json();
+      setPrediction(data.prediction);
+    } catch (error) {
+      console.error('Erro ao fazer a predição:', error);
+    }
+    setLoading(false);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="App">
+      <h1>Modelo de Machine Learning</h1>
+      <input
+        type="number"
+        placeholder="Digite um número"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+      />
+      <button onClick={handlePredict} disabled={loading || !input}>
+        {loading ? 'Carregando...' : 'Fazer Predição'}
+      </button>
+      {prediction !== null && (
+        <p>Predição do modelo: <strong>{prediction}</strong></p>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;
