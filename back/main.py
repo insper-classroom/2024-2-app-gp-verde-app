@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import tensorflow as tf
 from utils import *
+from plot import *
 import numpy as np
 import pickle
 
