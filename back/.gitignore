@@ -2,3 +2,4 @@ model/*.keras
 __pycache__/
 *.pyc
 venv/
+data/arm_lengths/*.pkl
