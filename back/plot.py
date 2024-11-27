@@ -1,11 +1,8 @@
-import os
-import argparse
-import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
-import pickle
+import numpy as np
+import io
 
 # Função auxiliar para escolher o melhor tamanho de janela de suavização para minimizar a última bin incompleta
 def choose_best_window_size(length, min_size, max_size, step):
@@ -94,39 +91,45 @@ def z_score_transform(matrix):
 
 # Função para plotar o heatmap a partir da matriz
 def plot_heatmap(z_scored_matrix, sample_name, vmin=-3, vmax=3, nan_value=-5):
+    # Substituir NaNs pelo valor extremo definido
+    z_scored_matrix_filled = np.where(np.isnan(z_scored_matrix), nan_value, z_scored_matrix)
 
-   # Substituir NaNs pelo valor extremo definido
-   z_scored_matrix_filled = np.where(np.isnan(z_scored_matrix), nan_value, z_scored_matrix)
+    # Definir colormap ajustado
+    colors = ["#00004B", "#ADD8E6", "#FFFFFF", "#FFA500", "#FF0000"]
+    cmap = LinearSegmentedColormap.from_list('custom_colormap', colors)
 
-   # Definir colormap ajustado, onde NaN usa uma cor fora da escala
-   colors = ["#00004B", "#ADD8E6", "#FFFFFF", "#FFA500", "#FF0000"]  # Cor extra para NaN
-   cmap = LinearSegmentedColormap.from_list('custom_colormap', colors)
+    # Plotar o heatmap
+    plt.figure(figsize=(12, 8))
+    heatmap = sns.heatmap(
+        z_scored_matrix_filled, 
+        cmap=cmap, 
+        cbar=True, 
+        cbar_kws={'orientation': 'horizontal'},
+        vmin=nan_value, 
+        vmax=vmax
+    )
 
-   # Plotar o heatmap
-   plt.figure(figsize=(12, 8))
-   heatmap = sns.heatmap(z_scored_matrix_filled, cmap=cmap, cbar=True, 
-                        cbar_kws={'orientation': 'horizontal'},
-                        vmin=nan_value, vmax=vmax)  # Incluir valores de NaN na escala
+    # Adicionar linha do centrômero
+    max_bins = z_scored_matrix.shape[1] // 2
+    plt.axvline(x=max_bins, color='black', linewidth=1.5)
+    plt.axvline(x=max_bins, color='white', linestyle='--', linewidth=1.5)
 
-   # Adicionar linha tracejada para o centrômero
-   max_bins = z_scored_matrix.shape[1] // 2
-   plt.axvline(x=max_bins, color='black', linewidth=1.5)
-   plt.axvline(x=max_bins, color='white', linestyle='--', linewidth=1.5)
+    # Configurar eixos e título
+    plt.xticks([])
+    plt.yticks([])
+    plt.ylabel('Chromosome', fontsize=14)
+    plt.title(f'CNN Bins - {sample_name}', fontsize=16)
 
-   # Remover o eixo x, mantendo apenas o rótulo do eixo y
-   plt.xticks([])
-   plt.yticks([])
-   plt.ylabel('Chromosome', fontsize=14) 
+    # Adicionar rótulos na barra de cores
+    colorbar = heatmap.collections[0].colorbar
+    colorbar.set_ticks([nan_value, vmin, 0, vmax])
+    colorbar.set_ticklabels(['NaN', str(round(vmin)), 0, str(round(vmax))])
+    colorbar.ax.set_title('Normalized Coverage', fontsize=14)
 
-   # Personalizar a barra de cores
-   colorbar = heatmap.collections[0].colorbar
-   colorbar.set_ticks([nan_value, vmin, 0, vmax])  # Inclui o valor de NaN como um tick
-   colorbar.set_ticklabels(['NaN', str(round(vmin)), 0, str(round(vmax))])  # Define os rótulos dos ticks
-   colorbar.ax.set_title('Normalized Coverage', fontsize=14) 
+    # Salvar o plot em um buffer de bytes
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png', dpi=300, bbox_inches='tight')
+    plt.close()
+    buffer.seek(0)
 
-   # Definir o título
-   plt.title(f'CNN Bins - {sample_name}', fontsize=16)
-
-   # Salvar figura
-   file_name = f'{sample_name}_2D_heatmap.png'
-   plt.savefig(file_name, format='png', dpi=300, bbox_inches='tight')
+    return buffer

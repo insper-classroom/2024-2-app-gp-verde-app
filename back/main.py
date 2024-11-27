@@ -1,10 +1,12 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import tensorflow as tf
 from utils import *
-from plot import *
 import numpy as np
+from plot import *
 import pickle
+import os
 
 app = FastAPI()
 
@@ -42,4 +44,29 @@ async def predict(file: UploadFile = File(...)):
         
         return {"prediction": float(prediction[0][0])}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar o arquivo: {str(e)}")
+
+TEMP_DIR = "./uploads/coverage"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
+@app.post("/generate-heatmap")
+async def generate_heatmap(file: UploadFile = File(...)):
+    try:
+        cov_file = os.path.join(TEMP_DIR, file.filename)
+        with open(cov_file, "wb") as f:
+            f.write(await file.read())
+        max_size = 3500000
+        min_size = 2500000
+        step = 100
+        sample = os.path.basename(cov_file).split("_")[0]
+        corrected_df = pd.read_csv(cov_file, sep="\t")
+        smoothed_cov = smooth_normalized_coverage(corrected_df, chr_arms, min_size, max_size, step)
+        cov_matrix = create_2d_array(smoothed_cov)
+        z_scored_matrix = z_score_transform(cov_matrix)
+        heatmap_buffer = plot_heatmap(z_scored_matrix, sample)
+        os.remove(cov_file)
+        return StreamingResponse(heatmap_buffer, media_type="image/png")
+    except Exception as e:
+        if os.path.exists(cov_file):
+            os.remove(cov_file)
         raise HTTPException(status_code=500, detail=f"Erro ao processar o arquivo: {str(e)}")
