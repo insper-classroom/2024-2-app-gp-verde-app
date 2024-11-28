@@ -34,6 +34,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 @app.post("/process-multiple-files")
 async def process_multiple_files(files: list[UploadFile] = File(...)):
     results = []
+    threshold = 0.6518086791038513  # Limiar para classificação
     try:
         for file in files:
             # Salvar arquivo temporariamente
@@ -41,41 +42,43 @@ async def process_multiple_files(files: list[UploadFile] = File(...)):
             with open(cov_file, "wb") as f:
                 f.write(await file.read())
 
-            # Processar predição
             try:
-                # Predição
+                # Pré-processamento
                 min_size = 2500000
                 max_size = 3500000
                 step = 100
 
-                with open(cov_file, "r") as f:
-                    cov_matrix = process_new_sample(f, chr_arms, min_size, max_size, step)
+                # Processar arquivo de cobertura para matriz de entrada
+                cov_matrix = process_new_sample(cov_file, chr_arms, min_size, max_size, step)
 
-                cov_matrix_expanded = np.expand_dims(cov_matrix, axis=-1)
-                prediction = model.predict(np.array([cov_matrix_expanded])) 
+                # Preparar a matriz para predição
+                prepared_matrix = prepare_data([cov_matrix])[0]
+
+                # Predição
+                prediction = model.predict(np.array([prepared_matrix]))[0][0]
+                prediction_result = "Positive" if prediction >= threshold else "Negative"
 
                 # Gerar heatmap
                 corrected_df = pd.read_csv(cov_file, sep="\t")
                 smoothed_cov = smooth_normalized_coverage(corrected_df, chr_arms, min_size, max_size, step)
                 cov_matrix = create_2d_array(smoothed_cov)
-                z_scored_matrix = z_score_transform(cov_matrix)
-                heatmap_buffer = plot_heatmap(z_scored_matrix, file.filename.split('.')[0])
+                heatmap_buffer = plot_heatmap(cov_matrix, file.filename.split('.')[0])
 
                 # Converter heatmap para Base64
                 heatmap_bytes = BytesIO(heatmap_buffer.read())
                 heatmap_base64 = base64.b64encode(heatmap_bytes.getvalue()).decode("utf-8")
 
-                # Adicionar resultados
+                # Adicionar resultado ao retorno
                 results.append({
                     "filename": file.filename,
-                    "prediction": float(prediction[0][0]),
+                    "prediction": prediction_result,
                     "heatmap": heatmap_base64,
                 })
             finally:
                 # Remover arquivo temporário
                 os.remove(cov_file)
-        
-        # Retornar resultados como JSON
+
+        # Retornar resultados
         return JSONResponse(content={"results": results})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao processar arquivos: {str(e)}")

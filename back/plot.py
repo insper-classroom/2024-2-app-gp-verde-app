@@ -89,6 +89,14 @@ def z_score_transform(matrix):
    
    return z_scored_matrix
 
+def normalize_matrix(matrix):
+    return matrix / np.mean(matrix, axis=1, keepdims=True)
+
+def prepare_data(data):
+    matrices_normalized = np.array([normalize_matrix(m) for m in data])
+    matrices_expanded = np.expand_dims(matrices_normalized, axis=-1)
+    return matrices_expanded
+
 # Função para plotar o heatmap a partir da matriz
 def plot_heatmap(z_scored_matrix, sample_name, vmin=-3, vmax=3, nan_value=-5):
     # Substituir NaNs pelo valor extremo definido
