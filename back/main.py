@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = tf.keras.models.load_model("model/model_artigo.keras")
+model = tf.keras.models.load_model("model/model_artigo_v3.1.keras")
 
 with open("./data/arm_lengths/arm_lengths.pkl", "rb") as f:
     chr_arms = pickle.load(f)
@@ -52,7 +52,7 @@ async def process_multiple_files(files: list[UploadFile] = File(...)):
                     cov_matrix = process_new_sample(f, chr_arms, min_size, max_size, step)
 
                 cov_matrix_expanded = np.expand_dims(cov_matrix, axis=-1)
-                prediction = model.predict(np.array([cov_matrix_expanded]))
+                prediction = model.predict(np.array([cov_matrix_expanded])) 
 
                 # Gerar heatmap
                 corrected_df = pd.read_csv(cov_file, sep="\t")
