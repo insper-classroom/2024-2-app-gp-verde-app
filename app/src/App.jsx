@@ -1,68 +1,51 @@
 import React, { useState } from "react";
-import { Box, Button, Typography, TextField, CircularProgress, IconButton } from "@mui/material";
+import { Box, Button, Typography, CircularProgress, IconButton } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 
 function App() {
-  const [file, setFile] = useState(null);
-  const [prediction, setPrediction] = useState(null);
-  const [heatmap, setHeatmap] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [results, setResults] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleFileChange = (event) => {
-    setFile(event.target.files[0]);
+    setFiles(Array.from(event.target.files));
   };
 
-  const handleClearFile = () => {
-    setFile(null);
-    setPrediction(null);
-    setHeatmap(null);
+  const handleClearFiles = () => {
+    setFiles([]);
+    setResults([]);
     setError(null);
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      setError("Por favor, selecione um arquivo .txt");
+    if (files.length === 0) {
+      setError("Por favor, selecione pelo menos um arquivo .txt");
       return;
     }
 
     setError(null);
-    setPrediction(null);
-    setHeatmap(null);
+    setResults([]);
     setLoading(true);
 
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
 
     try {
-      // Fazer a requisição para /predict
-      const predictResponse = await fetch("http://127.0.0.1:8000/predict", {
+      const response = await fetch("http://127.0.0.1:8000/process-multiple-files", {
         method: "POST",
         body: formData,
       });
 
-      if (!predictResponse.ok) {
-        const errorData = await predictResponse.json();
-        throw new Error(errorData.detail || "Erro na requisição de predição.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Erro ao processar os arquivos.");
       }
 
-      const predictData = await predictResponse.json();
-      setPrediction(predictData.prediction);
-
-      // Fazer a requisição para /generate-heatmap
-      const heatmapResponse = await fetch("http://127.0.0.1:8000/generate-heatmap", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!heatmapResponse.ok) {
-        const errorData = await heatmapResponse.json();
-        throw new Error(errorData.detail || "Erro na geração do heatmap.");
-      }
-
-      const blob = await heatmapResponse.blob();
-      const heatmapUrl = URL.createObjectURL(blob);
-      setHeatmap(heatmapUrl);
+      const data = await response.json();
+      setResults(data.results);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -83,7 +66,7 @@ function App() {
       }}
     >
       <Typography variant="h4" sx={{ marginBottom: 3 }}>
-        Modelo de Predição e Heatmap
+        Modelo de Predição e Heatmap (Múltiplos Arquivos)
       </Typography>
       <Box
         sx={{
@@ -100,15 +83,16 @@ function App() {
           fullWidth
           sx={{ marginBottom: 2 }}
         >
-          Selecionar Arquivo
+          Selecionar Arquivos
           <input
             type="file"
             hidden
+            multiple
             accept=".txt"
             onChange={handleFileChange}
           />
         </Button>
-        {file && (
+        {files.length > 0 && (
           <Box
             sx={{
               display: "flex",
@@ -123,9 +107,9 @@ function App() {
             }}
           >
             <Typography variant="body1" sx={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-              {file.name}
+              {files.length} arquivo(s) selecionado(s)
             </Typography>
-            <IconButton color="error" onClick={handleClearFile}>
+            <IconButton color="error" onClick={handleClearFiles}>
               <DeleteIcon />
             </IconButton>
           </Box>
@@ -133,7 +117,7 @@ function App() {
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={loading || !file}
+          disabled={loading || files.length === 0}
           fullWidth
           sx={{ marginBottom: 2 }}
         >
@@ -148,35 +132,26 @@ function App() {
             {error}
           </Typography>
         )}
-        {prediction && (
-          <Box sx={{ marginTop: 3, width: "100%", textAlign: "center" }}>
-            <Typography variant="h6">Resultado da Predição:</Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                backgroundColor: "#f4f4f4",
-                padding: 2,
-                borderRadius: 1,
-                marginTop: 1,
-              }}
-            >
-              {JSON.stringify(prediction, null, 2)}
-            </Typography>
-          </Box>
-        )}
-        {heatmap && (
-          <Box sx={{ marginTop: 3, width: "100%", textAlign: "center" }}>
-            <Typography variant="h6">Heatmap Gerado:</Typography>
-            <img
-              src={heatmap}
-              alt="Heatmap"
-              style={{
-                maxWidth: "100%",
-                height: "auto",
-                border: "1px solid #ddd",
-                borderRadius: "5px",
-              }}
-            />
+        {results.length > 0 && (
+          <Box sx={{ marginTop: 3, width: "100%" }}>
+            {results.map((result, index) => (
+              <Box key={index} sx={{ marginBottom: 3 }}>
+                <Typography variant="h6">{`Arquivo: ${result.filename}`}</Typography>
+                <Typography variant="body1" sx={{ marginBottom: 1 }}>
+                  Predição: {result.prediction}
+                </Typography>
+                <img
+                  src={`data:image/png;base64,${result.heatmap}`}
+                  alt={`Heatmap ${result.filename}`}
+                  style={{
+                    maxWidth: "100%",
+                    height: "auto",
+                    border: "1px solid #ddd",
+                    borderRadius: "5px",
+                  }}
+                />
+              </Box>
+            ))}
           </Box>
         )}
       </Box>
