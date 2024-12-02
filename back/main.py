@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = tf.keras.models.load_model("model/model_artigo_v3.1.keras")
+model = tf.keras.models.load_model("model/model_artigo_v4.keras")
 
 with open("./data/arm_lengths/arm_lengths.pkl", "rb") as f:
     chr_arms = pickle.load(f)
