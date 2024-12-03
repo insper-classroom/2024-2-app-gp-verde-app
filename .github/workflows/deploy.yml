@@ -20,7 +20,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.KEY_TEST }}
           port: 22
-          source: './app ./back ./docker-compose.yml' # Corrigido para string única
+          source: './app ./back ./docker-compose.yml'
           target: ~/deploy     
 
       - name: Run Deployment Commands
