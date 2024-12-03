@@ -2,9 +2,6 @@ name: Deploy React and FastAPI to AWS
 
 on:
   push:
-    branches:
-      - main
-    
     branches-ignore:
       - feedback
 
