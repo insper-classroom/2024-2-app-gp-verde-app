@@ -14,23 +14,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Certifique-se de clonar tudo, incluindo os arquivos de DVC
+          fetch-depth: 0
 
-      # 2. Listar arquivos do workspace para validação
-      - name: List workspace files
+      # 2. Build do React
+      - name: Build React app
+        working-directory: ./app
         run: |
-          echo "Root workspace files:"
-          ls -la
-          echo "App directory:"
-          ls -la ./app
-          echo "Back directory:"
-          ls -la ./back
+          npm install
+          npm run build
 
-      # 3. Compactar arquivos para transferência
+      # 3. Compactar arquivos
       - name: Compress files for SCP
-        run: tar -czf deploy.tar.gz ./app ./back ./docker-compose.yml .dvc .dvcignore
+        run: tar -czf deploy.tar.gz ./app/build ./back ./docker-compose.yml .dvc .dvcignore
 
-      # 4. Enviar arquivos para o servidor EC2
+      # 4. Transferir arquivos para o servidor
       - name: Deploy to AWS
         uses: appleboy/scp-action@master
         with:
@@ -50,22 +47,21 @@ jobs:
           key: ${{ secrets.KEY_TEST }}
           port: 22
           script: |
-            # Ir para o diretório de deploy
             cd ~/deploy
 
-            # Descompactar os arquivos enviados
+            # Descompactar os arquivos
             tar -xzf deploy.tar.gz
 
-            # Instalar dependências necessárias
-            sudo apt update
-            sudo apt install -y python3-pip
-            pip install --no-cache-dir dvc[s3]  # Ajustar conforme o tipo do remoto DVC
+            # Configurar ambiente virtual e instalar DVC
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install dvc[s3]
 
             # Configurar credenciais para o DVC remoto
             export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY }}
             export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY }}
 
-            # Baixar os modelos com DVC
+            # Baixar os modelos
             dvc pull
 
             # Instalar Docker Compose se necessário
@@ -74,6 +70,6 @@ jobs:
               sudo chmod +x /usr/local/bin/docker-compose
             fi
 
-            # Subir os containers Docker
+            # Subir os containers
             docker-compose down
             docker-compose up --build -d
