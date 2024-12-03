@@ -38,7 +38,7 @@ jobs:
       - name: Compress files for SCP
         run: |
           if [ -d "./app/build" ]; then
-            tar -czf deploy.tar.gz ./app/build ./back ./docker-compose.yml .dvc .dvcignore
+            tar -czf deploy.tar.gz ./app ./back ./docker-compose.yml .dvc .dvcignore
           else
             echo "Build directory not found!"
             exit 1
