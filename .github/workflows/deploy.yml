@@ -1,4 +1,4 @@
-name: Deploy React and FastAPI to AWS
+name: Deploy FastAPI to AWS
 
 on:
   push:
@@ -16,31 +16,61 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 2. Build do React
-      - name: Build React app
-        working-directory: ./app
-        run: |
-          npm install
-          npm run build
-          ls -la build
-
-      # 3. Verificar arquivos antes de compactar
-      - name: Verify files before compression
+      # 2. Verificar arquivos do workspace
+      - name: List workspace files
         run: |
           echo "Workspace files:"
           ls -la
-          echo "App directory:"
-          ls -la ./app
-          echo "Build directory:"
-          ls -la ./app/build
+          echo "Back directory:"
+          ls -la ./back
 
-      # 4. Compactar arquivos
+      # 3. Compactar arquivos para transferência
       - name: Compress files for SCP
-        run: |
-          if [ -d "./app/build" ]; then
-            tar -czf deploy.tar.gz ./app ./back ./docker-compose.yml .dvc .dvcignore
-          else
-            echo "Build directory not found!"
-            exit 1
-          fi
+        run: tar -czf deploy.tar.gz ./back ./docker-compose.yml .dvc .dvcignore
 
+      # 4. Transferir arquivos para o servidor
+      - name: Deploy to AWS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST_TEST }}
+          username: ubuntu
+          key: ${{ secrets.KEY_TEST }}
+          port: 22
+          source: ./deploy.tar.gz
+          target: ~/deploy
+
+      # 5. Executar comandos no servidor
+      - name: Run Deployment Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_TEST }}
+          username: ubuntu
+          key: ${{ secrets.KEY_TEST }}
+          port: 22
+          script: |
+            cd ~/deploy
+
+            # Descompactar os arquivos
+            tar -xzf deploy.tar.gz
+
+            # Configurar ambiente virtual e instalar dependências
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install dvc[s3]
+
+            # Configurar credenciais para o DVC remoto
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY }}
+
+            # Baixar os modelos
+            dvc pull
+
+            # Instalar Docker Compose, se necessário
+            if ! [ -x "$(command -v docker-compose)" ]; then
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+
+            # Subir os containers
+            docker-compose down
+            docker-compose up --build -d
