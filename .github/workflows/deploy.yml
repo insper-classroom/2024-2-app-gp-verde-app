@@ -26,11 +26,11 @@ jobs:
           pip install -r requirements.txt
 
       - name: Deploy to AWS
-        uses: appleboy/ssh-action@v0.1.4
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.AWS_HOST }}
+          host: ${{ secrets.HOST_TEST }}
           username: ubuntu  
-          key: ${{ secrets.AWS_SSH_KEY }}
+          key: ${{ secrets.KEY_TEST }}
           port: 22
           script: |
             mkdir -p ~/deploy
