@@ -17,11 +17,11 @@ jobs:
           fetch-depth: 0
 
       # 2. Verificar arquivos do workspace
-      - name: List workspace files
+      - name: Verify workspace files
         run: |
           echo "Workspace files:"
           ls -la
-          echo "Back directory:"
+          echo "Backend directory:"
           ls -la ./back
 
       # 3. Compactar arquivos para transferência
@@ -50,10 +50,11 @@ jobs:
           script: |
             cd ~/deploy
 
-            # Descompactar os arquivos
-            tar -xzf deploy.tar.gz
+            # Atualizar pacotes e instalar dependências
+            sudo apt update
+            sudo apt install -y python3-venv
 
-            # Configurar ambiente virtual e instalar dependências
+            # Configurar ambiente virtual e instalar DVC
             python3 -m venv venv
             source venv/bin/activate
             pip install dvc[s3]
