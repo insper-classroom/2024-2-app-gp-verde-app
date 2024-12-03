@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   frontend:
-    image: react-frontend:latest
     build:
       context: ./app
     ports:
@@ -10,9 +9,8 @@ services:
     restart: always
 
   backend:
-    image: fastapi-backend:latest
     build:
       context: ./back
     ports:
-      - "8000:8000" 
+      - "8000:8000"
     restart: always
