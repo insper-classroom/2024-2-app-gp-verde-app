@@ -1,0 +1,84 @@
+name: Deploy FastAPI to AWS
+
+on:
+  push:
+    branches-ignore:
+      - feedback
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2. Criar pasta build (se necessário)
+      - name: Create build directory
+        run: mkdir -p ./app/build
+
+      # 3. Verificar arquivos do workspace
+      - name: Verify workspace files
+        run: |
+          echo "Workspace files:"
+          ls -la
+          echo "Backend directory:"
+          ls -la ./back
+          echo "Build directory:"
+          ls -la ./app/build
+
+      # 4. Compactar arquivos para transferência
+      - name: Compress files for SCP
+        run: tar -czf deploy.tar.gz ./app ./back ./docker-compose.yml .dvc .dvcignore
+
+      # 5. Transferir arquivos para o servidor
+      - name: Deploy to AWS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST_TEST }}
+          username: ubuntu
+          key: ${{ secrets.KEY_TEST }}
+          port: 22
+          source: ./deploy.tar.gz
+          target: ~/deploy
+
+      # 6. Executar comandos no servidor
+      - name: Run Deployment Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_TEST }}
+          username: ubuntu
+          key: ${{ secrets.KEY_TEST }}
+          port: 22
+          script: |
+            # Clonar o repositório diretamente no servidor
+            rm -rf ~/deploy
+            git clone https://github.com/insper-classroom/2024-2-app-gp-verde-app ~/deploy
+            cd ~/deploy
+
+            # Configurar ambiente virtual e instalar dependências
+            sudo apt update
+            sudo apt install -y python3-venv
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install dvc[s3]
+
+            # Configurar credenciais para o DVC remoto
+            export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY }}
+            export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_KEY }}
+
+            # Baixar os modelos
+            dvc pull
+
+            # Instalar Docker Compose, se necessário
+            if ! [ -x "$(command -v docker-compose)" ]; then
+              sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+
+            # Subir os containers
+            docker-compose down
+            docker-compose up --build -d

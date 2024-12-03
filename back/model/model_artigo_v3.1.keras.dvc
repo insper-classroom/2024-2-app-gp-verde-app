@@ -1,0 +1,5 @@
+outs:
+- md5: 4209e4ede39d890b571a7cb00d8056f4
+  size: 3520005
+  hash: md5
+  path: model_artigo_v3.1.keras
