@@ -13,7 +13,7 @@ import os
 
 app = FastAPI()
 
-origins = ["http://localhost:5173"] 
+origins = ["http://localhost:8000"] 
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +30,10 @@ with open("./data/arm_lengths/arm_lengths.pkl", "rb") as f:
 
 TEMP_DIR = "./uploads/coverage"
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
 @app.post("/process-multiple-files")
 async def process_multiple_files(files: list[UploadFile] = File(...)):
