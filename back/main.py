@@ -13,7 +13,7 @@ import os
 
 app = FastAPI()
 
-origins = ["http://localhost:8000"] 
+origins = ["http://localhost:80", "http://3.81.205.150"] 
 
 app.add_middleware(
     CORSMiddleware,
