@@ -97,7 +97,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/process-multiple-files",
+        "/process-multiple-files",
         {
           method: "POST",
           body: formData,
