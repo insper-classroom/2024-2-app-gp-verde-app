@@ -1,3 +1,10 @@
+/**
+ * Este código React implementa uma interface para carregar arquivos .txt,
+ * enviá-los para um servidor backend e exibir os resultados processados,
+ * incluindo predições e heatmaps. A interface é estilizada com Material-UI
+ * e inclui animações com Framer Motion.
+ */
+
 import React, { useState } from "react";
 import {
   Box,
