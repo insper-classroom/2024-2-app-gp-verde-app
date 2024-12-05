@@ -293,7 +293,7 @@ function App() {
               </Typography>
               <Grid container spacing={4}>
                 {results.map((result, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Grid item xs={12} sm={6} md={4} key={index} sx={{marginBottom: 1}}>
                     <Card
                       sx={{
                         height: "100%",
@@ -373,6 +373,7 @@ function App() {
             backgroundColor: "#000000",
             color: "#ffffff",
             py: 2,
+            marginTop: 2,  
             textAlign: "center",
           }}
         >

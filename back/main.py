@@ -1,8 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
-from io import BytesIO
 import tensorflow as tf
 from utils import *
 import numpy as np
@@ -10,10 +8,11 @@ from plot import *
 import base64 
 import pickle
 import os
+import shutil
 
 app = FastAPI()
 
-origins = ["*"] 
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,7 +28,9 @@ with open("./data/arm_lengths/arm_lengths.pkl", "rb") as f:
     chr_arms = pickle.load(f)
 
 TEMP_DIR = "./uploads/coverage"
+LOG_DIR = "./logs"
 os.makedirs(TEMP_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 @app.get("/")
 async def root():
@@ -47,6 +48,13 @@ async def process_multiple_files(files: list[UploadFile] = File(...)):
                 f.write(await file.read())
 
             try:
+                # Criar pasta para logs deste arquivo
+                log_subdir = os.path.join(LOG_DIR, os.path.splitext(file.filename)[0])
+                os.makedirs(log_subdir, exist_ok=True)
+
+                # Copiar o arquivo enviado para a pasta de logs
+                shutil.copy(cov_file, os.path.join(log_subdir, file.filename))
+
                 # Pré-processamento
                 min_size = 2500000
                 max_size = 3500000
@@ -68,9 +76,15 @@ async def process_multiple_files(files: list[UploadFile] = File(...)):
                 cov_matrix = create_2d_array(smoothed_cov)
                 heatmap_buffer = plot_heatmap(cov_matrix, file.filename.split('.')[0])
 
+                # Salvar heatmap na pasta de logs
+                heatmap_path = os.path.join(log_subdir, f"{os.path.splitext(file.filename)[0]}_heatmap.png")
+                with open(heatmap_path, "wb") as heatmap_file:
+                    heatmap_buffer.seek(0)
+                    heatmap_file.write(heatmap_buffer.read())
+
                 # Converter heatmap para Base64
-                heatmap_bytes = BytesIO(heatmap_buffer.read())
-                heatmap_base64 = base64.b64encode(heatmap_bytes.getvalue()).decode("utf-8")
+                heatmap_buffer.seek(0)
+                heatmap_base64 = base64.b64encode(heatmap_buffer.read()).decode("utf-8")
 
                 # Adicionar resultado ao retorno
                 results.append({
